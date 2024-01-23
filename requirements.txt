@@ -1,0 +1,7 @@
+fastapi~=0.109.0
+locust~=2.20.1
+gunicorn~=21.2.0
+spotipy~=2.23.0
+pandas~=2.2.0
+lyricsgenius~=3.0.1
+nltk~=3.8.1
