@@ -3,6 +3,9 @@ from fastapi import FastAPI, UploadFile
 from src.classes.StreamingHistory import StreamingHistory
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.param_functions import File
+from pydantic import BaseModel
+import spotipy
+from spotipy.oauth2 import SpotifyOAuth
 
 app = FastAPI()
 
@@ -17,6 +20,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+class Token(BaseModel):
+    token: str
+
 
 FILES_PATH = 'C:/Users/MaciejŚliwa/PycharmProjects/mgr_backend/data'
 
@@ -40,5 +48,17 @@ async def upload_file(file: UploadFile = File(...)):
     streaming_history = StreamingHistory(file=data, file_type='JSON')
     cal_min, cal_max = streaming_history.get_data_time_range()
     return {"min": cal_min, "max": cal_max}
+
+
+@app.post("/spt/last")
+async def get_recently_played(token: Token):
+    sp = spotipy.Spotify(auth=token.token)
+    results = sp.current_user_recently_played(limit=1)
+
+    if results['items']:
+        track = results['items'][0]['track']
+        return {"recently_played": track['name']}
+    else:
+        return {"error": "No recently played tracks found"}
 
 
