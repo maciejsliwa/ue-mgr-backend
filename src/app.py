@@ -1,16 +1,18 @@
 import json
-from fastapi import FastAPI, UploadFile
-from src.classes.StreamingHistory import StreamingHistory
+from fastapi import FastAPI, UploadFile, BackgroundTasks, Depends, HTTPException, status
+from src.classes.DatabaseContext import DatabaseContext
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.param_functions import File
 from pydantic import BaseModel
 import spotipy
-from spotipy.oauth2 import SpotifyOAuth
+from fastapi.security import OAuth2PasswordBearer
+from src.classes.StreamingHistory import StreamingHistory
 
 app = FastAPI()
 
 origins = [
     "http://localhost:3000/",
+    "localhost:3000/",
 ]
 
 app.add_middleware(
@@ -20,45 +22,38 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
+db = DatabaseContext()
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/token")
 
 class Token(BaseModel):
     token: str
 
 
-FILES_PATH = 'C:/Users/MaciejŚliwa/PycharmProjects/mgr_backend/data'
-
-
-# @app.get("/calender/range")
-# async def root():
-#     streaming_history = StreamingHistory(files_path=FILES_PATH)
-#     cal_min, cal_max = streaming_history.get_data_time_range()
-#     return {"min": cal_min, "max": cal_max}
-
-
-@app.get("/hello/{name}")
-async def say_hello(name: str):
-    return {"message": f"Hello {name}"}
-
-
 @app.post("/uploadFiles")
-async def upload_file(file: UploadFile = File(...)):
+async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
     contents = await file.read()
-    data = json.loads(contents)
-    streaming_history = StreamingHistory(file=data, file_type='JSON')
-    cal_min, cal_max = streaming_history.get_data_time_range()
-    return {"min": cal_min, "max": cal_max}
+    try:
+        json_contents = json.loads(contents)
+        sh = StreamingHistory(json_contents, file.filename)
+        background_tasks.add_task(db.save_streaming_history(sh))
+        return {"status_ok": "FIle was saved"}
+    except json.JSONDecodeError:
+        return {"error": "Provided file is not valid JSON"}
 
 
-@app.post("/spt/last")
-async def get_recently_played(token: Token):
-    sp = spotipy.Spotify(auth=token.token)
-    results = sp.current_user_recently_played(limit=1)
+@app.get("/getRange")
+async def get_range(token: str = Depends(oauth2_scheme)):
+    sp = spotipy.Spotify(auth=token)
+    user = sp.current_user()
+    username = user['id']
+    min, max = db.get_data_time_range(username)
+    return {"min": min, "max": max}
 
-    if results['items']:
-        track = results['items'][0]['track']
-        return {"recently_played": track['name']}
-    else:
-        return {"error": "No recently played tracks found"}
+@app.get("/getLast")
+async def get_recently_played(token: str = Depends(oauth2_scheme)):
+    sp = spotipy.Spotify(auth=token)
+    user = sp.current_user()
+    username = user['id']
+    return {"recently_played": db.get_last_played_track(username)}
 
 
