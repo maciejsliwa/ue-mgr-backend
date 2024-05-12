@@ -1,1 +1,2 @@
-gunicorn --bind=0.0.0.0 --timeout 600 --workers=4 --worker-class=uvicorn.workers.UvicornWorker --chdir src/app app:app
+#!/bin/sh
+gunicorn -w 4 -k uvicorn.workers.UvicornWorker -b :8000 app:app --log-level warning
