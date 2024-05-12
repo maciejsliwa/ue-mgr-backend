@@ -31,3 +31,4 @@ azure-ai-textanalytics~=5.3.0
 lyricsgenius~=3.0.1
 aiohttp~=3.9.5
 Levenshtein~=0.25.1
+uvicorn~=0.29.0
