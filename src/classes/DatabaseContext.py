@@ -1,22 +1,22 @@
+import os
 from datetime import datetime
 from azure.cosmos import CosmosClient, PartitionKey
-import src.config as config
 from src.classes.StreamingHistory import StreamingHistory
 
-HOST = config.settings['host']
-MASTER_KEY = config.settings['master_key']
-DATABASE_ID = config.settings['database_id']
-CONTAINER_ID = config.settings['container_id']
+DB_HOST = os.environ.get('COSMOS_HOST', '')
+DB_KEY = os.environ.get('COSMOS_KEY', '')
+DB_ID = os.environ.get('COSMOS_DATABASE', '')
+DB_CONTAINER_ID = os.environ.get('COSMOS_CONTAINER', '')
 
 
 class DatabaseContext:
     def __init__(self):
-        self.client = CosmosClient(HOST, {'masterKey': MASTER_KEY},
+        self.client = CosmosClient(DB_HOST, {'masterKey': DB_KEY},
                                    user_agent="CosmosDBPythonQuickstart",
                                    user_agent_overwrite=True)
-        self.database = self.client.create_database_if_not_exists(id=DATABASE_ID)
+        self.database = self.client.create_database_if_not_exists(id=DB_ID)
         self.container = self.database.create_container_if_not_exists(
-            id=CONTAINER_ID,
+            id=DB_CONTAINER_ID,
             partition_key=PartitionKey(path="/username"),
             offer_throughput=1000
         )
@@ -53,3 +53,19 @@ class DatabaseContext:
                   """
         ))
         return items[0]['tracks'][-1]['master_metadata_track_name']
+
+    def get_tracks_by_month(self, date: str, username: str):
+        year, month = date.split('-')[:2]
+        next_month = str(int(month) % 12 + 1).zfill(2)
+        next_year = str(int(year) + 1) if next_month == '01' else year
+        items = list(self.container.query_items(
+            query=f"""  
+                SELECT track.ts, track.master_metadata_track_name, track.master_metadata_album_artist_name  
+                FROM c  
+                JOIN track IN c.tracks  
+                WHERE c.username = '{username}'  
+                AND c.min_date >= '{year}-{month}-01T00:00:0+00:00'  
+                AND c.max_date < '{next_year}-{next_month}-01T00:00:00+00:00'  
+            """
+        ))
+        return items

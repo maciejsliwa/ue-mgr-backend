@@ -1,6 +1,6 @@
 fastapi~=0.110.0
 locust~=2.20.1
-gunicorn~=21.2.0
+gunicorn~=22.0.0
 spotipy~=2.23.0
 pandas~=2.2.0
 lyricsgenius~=3.0.1
@@ -26,3 +26,8 @@ virtualenv~=20.25.1
 virtualenv-clone~=0.5.7
 pydantic~=2.6.4
 azure~=4.0.0
+beautifulsoup4~=4.12.3
+azure-ai-textanalytics~=5.3.0
+lyricsgenius~=3.0.1
+aiohttp~=3.9.5
+Levenshtein~=0.25.1
