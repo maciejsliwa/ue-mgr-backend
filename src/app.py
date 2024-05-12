@@ -26,8 +26,8 @@ app = FastAPI()
 GENIUS_TOKEN = os.environ.get('GENIUS_TOKEN', '')
 
 origins = [
-    "http://localhost:3000/",
-    "localhost:3000/",
+    "http://sentimental-spotify.azurewebsites.net/",
+    "sentimental-spotify.azurewebsites.net/",
 ]
 
 app.add_middleware(
