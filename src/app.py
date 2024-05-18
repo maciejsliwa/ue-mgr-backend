@@ -1,7 +1,7 @@
 import json
+import logging
 import os
 import re
-import sys
 import time
 from collections import Counter
 from datetime import datetime
@@ -17,11 +17,11 @@ import spotipy
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from src.classes.StreamingHistory import StreamingHistory
 from lyricsgenius import Genius
-import asyncio
-from concurrent.futures import ThreadPoolExecutor
 from Levenshtein import distance
 
 app = FastAPI()
+
+logging.basicConfig(level=logging.INFO)
 
 GENIUS_TOKEN = os.environ.get('GENIUS_TOKEN', '')
 
@@ -101,38 +101,26 @@ async def get_sentiment_by_month(date: str, token: HTTPAuthorizationCredentials 
     user = sp.current_user()
     username = user['id']
     tracks = db.get_tracks_by_month(date, username)
-    genius = Genius(access_token=GENIUS_TOKEN, timeout=30)
-    sys.stdout = open(os.devnull, 'w')
-
-    def fetch_track_info(track):
-        while True:
-            try:
-                if track['master_metadata_track_name'] and track['master_metadata_album_artist_name']:
-                    track_info = None
-                    title = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_track_name'])[0]
-                    author = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_album_artist_name'])[0]
-                    track_info = genius.search_song(title=title, artist=author, get_full_info=False)
-                    if (track_info and track_info.lyrics
-                            and (author in track_info.artist or distance(author, track_info.artist) <= 5)):
-                        res_sentiment = cog_srv.analyze_sentiment([track_info.lyrics], show_opinion_mining=False)
-                        if res_sentiment and res_sentiment[0] and 'sentiment' in res_sentiment[0]:
-                            track['sentiment'] = res_sentiment[0]['sentiment']
-                break
-            except requests.exceptions.HTTPError as e:
-                if e and e.response and e.response.status_code and e.response.status_code == 403:
-                    time.sleep(1)
-                    continue
-                else:
-                    track['error'] = e.__repr__()
-                    break
-            except TimeoutError:
-                track['error'] = 'timeout'
-                break
-
-    with ThreadPoolExecutor() as executor:
-        loop = asyncio.get_event_loop()
-        await asyncio.gather(*(loop.run_in_executor(executor, fetch_track_info, track) for track in tracks))
-    sys.stdout = sys.__stdout__
+    genius = Genius(access_token=GENIUS_TOKEN, timeout=50)
+    for track in tracks:
+        try:
+            if track['master_metadata_track_name'] and track['master_metadata_album_artist_name']:
+                track_info = None
+                title = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_track_name'])[0]
+                author = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_album_artist_name'])[0]
+                track_info = genius.search_song(title=title, artist=author, get_full_info=False)
+                if (track_info and track_info.lyrics
+                        and (author in track_info.artist or distance(author, track_info.artist) <= 5)):
+                    res_sentiment = cog_srv.analyze_sentiment([track_info.lyrics], show_opinion_mining=False)
+                    if res_sentiment and res_sentiment[0] and 'sentiment' in res_sentiment[0]:
+                        track['sentiment'] = res_sentiment[0]['sentiment']
+        except requests.exceptions.HTTPError as e:
+            if e and e.response and e.response.status_code and e.response.status_code == 403:
+                time.sleep(1)
+            else:
+                track['error'] = e.__repr__()
+        except TimeoutError:
+            track['error'] = 'timeout'
     sentiments_by_date = {}
     for track in tracks:
         if 'sentiment' in track:
@@ -145,5 +133,4 @@ async def get_sentiment_by_month(date: str, token: HTTPAuthorizationCredentials 
         counter = Counter(sentiments)
         most_common_sentiment = counter.most_common(1)[0][0]
         sentiments_by_date[date] = most_common_sentiment
-    return sentiments_by_date
-
+    return sentiments_by_date if len(sentiments_by_date.keys()) > 0 else tracks
