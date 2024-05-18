@@ -87,28 +87,31 @@ async def get_recently_played(token: HTTPAuthorizationCredentials = Depends(HTTP
 
 @app.get("/getSentiment/")
 async def get_sentiment(artist: str, title: str):
-    headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
-        'Authorization': 'Bearer ' + GENIUS_TOKEN
-    }
-    search_url = f"https://api.genius.com/search?q={artist}%20{title}"
-    response = requests.get(search_url, headers=headers)
-    if response.status_code != 200:
-        return {"error": "Failed to search for the song"}
-    response_json = response.json()
-    for hit in response_json["response"]["hits"]:
-        find_artist = hit["result"]["primary_artist"]["name"].lower()
-        if artist.lower() in find_artist or distance(find_artist, artist.lower()) <= 3:
-            song_url = hit["result"]["url"]
-            break
-    else:
-        return {"error": "Song not found"}
-    page = requests.get(song_url, headers=headers)
-    html = BeautifulSoup(page.text, "html.parser")
-    [h.extract() for h in html('script')]
-    lyrics = [html.find("div", {"data-lyrics-container": "true"}).get_text(' ')]
-    result = cog_srv.analyze_sentiment(lyrics, show_opinion_mining=False)
-    return result
+    try:
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.82 Safari/537.36',
+            'Authorization': 'Bearer ' + GENIUS_TOKEN
+        }
+        search_url = f"https://api.genius.com/search?q={artist}%20{title}"
+        response = requests.get(search_url, headers=headers)
+        if response.status_code != 200:
+            return {"error": "Failed to search for the song"}
+        response_json = response.json()
+        for hit in response_json["response"]["hits"]:
+            find_artist = hit["result"]["primary_artist"]["name"].lower()
+            if artist.lower() in find_artist or distance(find_artist, artist.lower()) <= 3:
+                song_url = hit["result"]["url"]
+                break
+        else:
+            return {"error": "Song not found"}
+        page = requests.get(song_url, headers=headers)
+        html = BeautifulSoup(page.text, "html.parser")
+        [h.extract() for h in html('script')]
+        lyrics = [html.find("div", {"data-lyrics-container": "true"}).get_text(' ')]
+        result = cog_srv.analyze_sentiment(lyrics, show_opinion_mining=False)
+        return result
+    except Exception as e:
+        return e.__repr__()
 
 
 @app.post("/getSentimentByMonth/")
