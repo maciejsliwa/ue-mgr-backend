@@ -107,9 +107,9 @@ async def get_sentiment(artist: str, title: str):
         page = requests.get(song_url, headers=headers)
         html = BeautifulSoup(page.text, "html.parser")
         [h.extract() for h in html('script')]
-        lyrics = [html.find("div", {"data-lyrics-container": "true"}).get_text(' ')]
-        result = cog_srv.analyze_sentiment(lyrics, show_opinion_mining=False)
-        return result
+        #lyrics = [html.find("div", {"data-lyrics-container": "true"}).get_text(' ')]
+        #result = cog_srv.analyze_sentiment(lyrics, show_opinion_mining=False)
+        return html
     except Exception as e:
         return e.__repr__()
 
