@@ -119,11 +119,11 @@ async def get_sentiment_by_month(date: str, token: HTTPAuthorizationCredentials 
                             track['sentiment'] = res_sentiment[0]['sentiment']
                 break
             except requests.exceptions.HTTPError as e:
-                if e.response.status_code == 403:
+                if e and e.response and e.response.status_code and e.response.status_code == 403:
                     time.sleep(1)
                     continue
                 else:
-                    track['error'] = 'HTTP Error: ' + str(e.response.status_code)
+                    track['error'] = e.__repr__()
                     break
             except TimeoutError:
                 track['error'] = 'timeout'
