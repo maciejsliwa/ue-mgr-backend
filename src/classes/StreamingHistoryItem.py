@@ -43,3 +43,4 @@ class StreamingHistoryItem:
             "master_metadata_album_album_name": self.master_metadata_album_album_name,
             "spotify_track_uri": self.spotify_track_uri,
         }
+

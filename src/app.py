@@ -4,7 +4,6 @@ import re
 import sys
 from collections import Counter
 from datetime import datetime
-
 import requests
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.textanalytics import TextAnalyticsClient
@@ -20,8 +19,11 @@ from lyricsgenius import Genius
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from Levenshtein import distance
+import logging
 
 app = FastAPI()
+
+logging.basicConfig(level=logging.INFO)
 
 GENIUS_TOKEN = os.environ.get('GENIUS_TOKEN', '')
 
@@ -49,6 +51,11 @@ def authenticate_azure_cognitive_client():
 
 cog_srv = authenticate_azure_cognitive_client()
 db = DatabaseContext()
+
+
+@app.get("/")
+def read_root():
+    return {"Hello": "World"}
 
 
 @app.post("/uploadFiles")
@@ -130,3 +137,4 @@ async def get_sentiment_by_month(date: str, token: HTTPAuthorizationCredentials 
         most_common_sentiment = counter.most_common(1)[0][0]
         sentiments_by_date[date] = most_common_sentiment
     return sentiments_by_date
+
