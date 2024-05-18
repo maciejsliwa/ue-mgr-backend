@@ -46,3 +46,4 @@ class StreamingHistory:
         max_date = max(item.ts for item in items)
 
         return min_date.isoformat(), max_date.isoformat()
+
