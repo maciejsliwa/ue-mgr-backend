@@ -2,6 +2,7 @@ import json
 import os
 import re
 import sys
+import time
 from collections import Counter
 from datetime import datetime
 import requests
@@ -19,11 +20,8 @@ from lyricsgenius import Genius
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
 from Levenshtein import distance
-import logging
 
 app = FastAPI()
-
-logging.basicConfig(level=logging.INFO)
 
 GENIUS_TOKEN = os.environ.get('GENIUS_TOKEN', '')
 
@@ -107,18 +105,29 @@ async def get_sentiment_by_month(date: str, token: HTTPAuthorizationCredentials 
     sys.stdout = open(os.devnull, 'w')
 
     def fetch_track_info(track):
-        try:
-            track_info = None
-            title = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_track_name'])[0]
-            author = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_album_artist_name'])[0]
-            track_info = genius.search_song(title=title, artist=author, get_full_info=False)
-            if (track_info and track_info.lyrics
-                    and (author in track_info.artist or distance(author, track_info.artist) <= 5)):
-                res_sentiment = cog_srv.analyze_sentiment([track_info.lyrics], show_opinion_mining=False)
-                if res_sentiment and res_sentiment[0] and 'sentiment' in res_sentiment[0]:
-                    track['sentiment'] = res_sentiment[0]['sentiment']
-        except TimeoutError:
-            track['error'] = 'timeout'
+        while True:
+            try:
+                if track['master_metadata_track_name'] and track['master_metadata_album_artist_name']:
+                    track_info = None
+                    title = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_track_name'])[0]
+                    author = re.split(r'[^a-zA-Z0-9 ,]', track['master_metadata_album_artist_name'])[0]
+                    track_info = genius.search_song(title=title, artist=author, get_full_info=False)
+                    if (track_info and track_info.lyrics
+                            and (author in track_info.artist or distance(author, track_info.artist) <= 5)):
+                        res_sentiment = cog_srv.analyze_sentiment([track_info.lyrics], show_opinion_mining=False)
+                        if res_sentiment and res_sentiment[0] and 'sentiment' in res_sentiment[0]:
+                            track['sentiment'] = res_sentiment[0]['sentiment']
+                break
+            except requests.exceptions.HTTPError as e:
+                if e.response.status_code == 403:
+                    time.sleep(1)
+                    continue
+                else:
+                    track['error'] = 'HTTP Error: ' + str(e.response.status_code)
+                    break
+            except TimeoutError:
+                track['error'] = 'timeout'
+                break
 
     with ThreadPoolExecutor() as executor:
         loop = asyncio.get_event_loop()
