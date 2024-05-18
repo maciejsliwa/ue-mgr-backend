@@ -19,9 +19,8 @@ from src.classes.StreamingHistory import StreamingHistory
 from lyricsgenius import Genius
 from Levenshtein import distance
 
+logging.basicConfig(level=logging.INFO)
 app = FastAPI()
-
-logging.basicConfig(level=logging.DEBUG)
 
 GENIUS_TOKEN = os.environ.get('GENIUS_TOKEN', '')
 
@@ -94,11 +93,13 @@ async def get_sentiment(artist: str, title: str):
         }
         search_url = f"https://api.genius.com/search?q={artist}%20{title}"
         response = requests.get(search_url, headers=headers)
-        logging.debug(response)
+        logging.info(response.__repr__())
+        print(response.__repr__())
         if response.status_code != 200:
             return {"error": "Failed to search for the song"}
         response_json = response.json()
-        logging.debug(response_json)
+        logging.info(response_json)
+        print(response_json)
         for hit in response_json["response"]["hits"]:
             find_artist = hit["result"]["primary_artist"]["name"].lower()
             if artist.lower() in find_artist or distance(find_artist, artist.lower()) <= 3:
@@ -107,15 +108,20 @@ async def get_sentiment(artist: str, title: str):
         else:
             return {"error": "Song not found"}
         page = requests.get(song_url, headers=headers)
-        logging.debug(page)
+        logging.info(page)
+        print(page.__repr__())
         html = BeautifulSoup(page.text, "html.parser")
-        logging.debug(html)
+        logging.info(html)
+        print(html.__repr__())
         [h.extract() for h in html('script')]
-        logging.debug(html)
+        logging.info(html)
+        print(html.__repr__())
         lyrics = [html.find("div", {"data-lyrics-container": "true"}).get_text(' ')]
-        logging.debug(lyrics)
+        logging.info(lyrics)
+        print(lyrics)
         result = cog_srv.analyze_sentiment(lyrics, show_opinion_mining=False)
-        logging.debug(result)
+        logging.info(result)
+        print(result)
         return result
     except Exception as e:
         return e.__repr__()
