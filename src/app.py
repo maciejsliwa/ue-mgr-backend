@@ -21,7 +21,7 @@ from Levenshtein import distance
 
 app = FastAPI()
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 
 GENIUS_TOKEN = os.environ.get('GENIUS_TOKEN', '')
 
@@ -94,9 +94,11 @@ async def get_sentiment(artist: str, title: str):
         }
         search_url = f"https://api.genius.com/search?q={artist}%20{title}"
         response = requests.get(search_url, headers=headers)
+        logging.debug(response)
         if response.status_code != 200:
             return {"error": "Failed to search for the song"}
         response_json = response.json()
+        logging.debug(response_json)
         for hit in response_json["response"]["hits"]:
             find_artist = hit["result"]["primary_artist"]["name"].lower()
             if artist.lower() in find_artist or distance(find_artist, artist.lower()) <= 3:
@@ -105,11 +107,16 @@ async def get_sentiment(artist: str, title: str):
         else:
             return {"error": "Song not found"}
         page = requests.get(song_url, headers=headers)
+        logging.debug(page)
         html = BeautifulSoup(page.text, "html.parser")
+        logging.debug(html)
         [h.extract() for h in html('script')]
-        #lyrics = [html.find("div", {"data-lyrics-container": "true"}).get_text(' ')]
-        #result = cog_srv.analyze_sentiment(lyrics, show_opinion_mining=False)
-        return html
+        logging.debug(html)
+        lyrics = [html.find("div", {"data-lyrics-container": "true"}).get_text(' ')]
+        logging.debug(lyrics)
+        result = cog_srv.analyze_sentiment(lyrics, show_opinion_mining=False)
+        logging.debug(result)
+        return result
     except Exception as e:
         return e.__repr__()
 
