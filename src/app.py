@@ -22,11 +22,6 @@ app = FastAPI()
 
 GENIUS_TOKEN = os.environ.get('GENIUS_TOKEN', '')
 
-origins = [
-    "http://sentimental-spotify.azurewebsites.net/",
-    "sentimental-spotify.azurewebsites.net/",
-]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -58,7 +53,11 @@ async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File
     contents = await file.read()
     try:
         json_contents = json.loads(contents)
-        sh = StreamingHistory(json_contents, file.filename)
+        sh = StreamingHistory.parse_obj({
+            'file_name': file.filename,
+            'username': json_contents[0]['username'],
+            'history_list': json_contents
+        })
         background_tasks.add_task(db.save_streaming_history(sh))
         return {"status_ok": "FIle was saved"}
     except json.JSONDecodeError:
