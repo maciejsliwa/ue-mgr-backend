@@ -2,13 +2,15 @@ import json
 import os
 import re
 import time
+import zipfile
+from io import BytesIO
 from collections import Counter
 from datetime import datetime
 import requests
 from azure.core.credentials import AzureKeyCredential
 from azure.ai.textanalytics import TextAnalyticsClient
 from bs4 import BeautifulSoup
-from fastapi import FastAPI, UploadFile, BackgroundTasks, Depends
+from fastapi import FastAPI, UploadFile, Depends, HTTPException
 from src.classes.DatabaseContext import DatabaseContext
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.param_functions import File
@@ -49,19 +51,23 @@ def read_root():
 
 
 @app.post("/uploadFiles")
-async def upload_file(background_tasks: BackgroundTasks, file: UploadFile = File(...)):
-    contents = await file.read()
-    try:
-        json_contents = json.loads(contents)
-        sh = StreamingHistory.parse_obj({
-            'file_name': file.filename,
-            'username': json_contents[0]['username'],
-            'history_list': json_contents
-        })
-        background_tasks.add_task(db.save_streaming_history(sh))
-        return {"status_ok": "FIle was saved"}
-    except json.JSONDecodeError:
-        return {"error": "Provided file is not valid JSON"}
+async def upload_file(file: UploadFile = File(...)):
+    if file.filename.endswith('.zip'):
+        with zipfile.ZipFile(BytesIO(await file.read())) as zfile:
+            for filename in zfile.namelist():
+                if re.match(r'TEST_FILE_\d{3}-\d{3}.JSON', filename):
+                    with zfile.open(filename) as f:
+                        contents = f.read()
+                        json_contents = json.loads(contents)
+                        sh = StreamingHistory.parse_obj({
+                            'file_name': filename,
+                            'username': json_contents[0]['username'],
+                            'history_list': json_contents
+                        })
+                        # db.save(sh)
+    else:
+        raise HTTPException(status_code=400, detail="File is not a zip file")
+    return {"status": "success"}
 
 
 @app.get("/getRange")

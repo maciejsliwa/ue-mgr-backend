@@ -10,8 +10,8 @@ MONGO_CONNECTION_STRING = os.environ.get('MONGO_CONNECTION_STRING', '')
 class DatabaseContext:
     def __init__(self):
         self.client = MongoClient(MONGO_CONNECTION_STRING)
-        self.database = self.client.get_database('lirycs')
-        self.collection = self.database['genius']
+        self.database = self.client.get_database('streaminghistory')
+        self.collection = self.database['tracks']
 
     def save_streaming_history(self, sh: StreamingHistory):
         for month in sh.get_months():
