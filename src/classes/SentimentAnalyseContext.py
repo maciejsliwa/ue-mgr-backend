@@ -49,9 +49,9 @@ class SentimentAnalyseContext:
                 response = self.azure_client.analyze_sentiment(chunks[:chunks_limit], language=document['lang'])
 
                 if response:
-                    positives = [res.positive for res in response]
-                    neutrals = [res.neutral for res in response]
-                    negatives = [res.negative for res in response]
+                    positives = [res.confidence_scores.positive for res in response]
+                    neutrals = [res.confidence_scores.neutral for res in response]
+                    negatives = [res.confidence_scores.negative for res in response]
                     item.sentiment = SentimentScore(positive=mean(positives),
                                                     neutral=mean(neutrals),
                                                     negative=mean(negatives))
