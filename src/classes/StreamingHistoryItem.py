@@ -2,6 +2,8 @@ from pydantic import BaseModel, Field
 from datetime import datetime
 from typing import Optional
 
+from src.classes.SentimentScore import SentimentScore
+
 
 class StreamingHistoryItem(BaseModel):
     ts: datetime = Field(default_factory=datetime.now)
@@ -12,9 +14,4 @@ class StreamingHistoryItem(BaseModel):
     spotify_track_uri: Optional[str] = ''
     reason_start: Optional[str] = ''
     reason_end: Optional[str] = ''
-
-    class Config:
-        json_encoders = {
-            datetime: lambda v: v.isoformat(),
-        }
-
+    sentiment: SentimentScore = Field(default_factory=SentimentScore)
